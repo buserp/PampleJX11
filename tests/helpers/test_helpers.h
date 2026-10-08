@@ -19,9 +19,9 @@
    });
 
  */
-[[maybe_unused]] static void runWithinPluginEditor (const std::function<void (PluginProcessor& plugin)>& testCode)
+[[maybe_unused]] static void runWithinPluginEditor (const std::function<void (JX11AudioProcessor& plugin)>& testCode)
 {
-    PluginProcessor plugin;
+    JX11AudioProcessor plugin;
     const auto editor = plugin.createEditorAndMakeActive();
 
     testCode (plugin);
