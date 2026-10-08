@@ -134,7 +134,7 @@ jobs:
           dev-id-installer-password: ${{ secrets.DEV_ID_INSTALLER_PASSWORD }}
 
       - name: Codesign (macOS)
-        if: false && ${{ runner.os == 'macOS' }} # Disabled for now
+        if: false # Disabled for now
         timeout-minutes: 5
         run: |
           # Each plugin must be code signed
@@ -194,7 +194,7 @@ jobs:
           mv "packaging/Output/${{ env.ARTIFACT_NAME }}.exe" "${{ env.ARTIFACTS_PATH }}/"
 
       - name: Codesign with Azure Trusted Signing
-        if: false && ${{ runner.os == 'Windows' }} # Disabled for now
+        if: false # Disabled for now
         uses: azure/artifact-signing-action@v2
         with:
           # The Azure Active Directory tenant (directory) ID.
