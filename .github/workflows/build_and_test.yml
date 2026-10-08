@@ -66,9 +66,9 @@ jobs:
           # IPP stuff
           wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
           echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-          
+
           sudo apt-get update && sudo apt install libasound2-dev libx11-dev libxi-dev libxinerama-dev libxext-dev libfreetype6-dev libwebkit2gtk-4.1-dev libglu1-mesa-dev xvfb ninja-build intel-oneapi-ipp-devel
-          sudo /usr/bin/Xvfb $DISPLAY & 
+          sudo /usr/bin/Xvfb $DISPLAY &
 
       - name: Install IPP (Windows)
         if: (runner.os == 'Windows')
@@ -134,7 +134,7 @@ jobs:
           dev-id-installer-password: ${{ secrets.DEV_ID_INSTALLER_PASSWORD }}
 
       - name: Codesign (macOS)
-        if: ${{ runner.os == 'macOS' }}
+        if: false && ${{ runner.os == 'macOS' }} # Disabled for now
         timeout-minutes: 5
         run: |
           # Each plugin must be code signed
@@ -194,7 +194,7 @@ jobs:
           mv "packaging/Output/${{ env.ARTIFACT_NAME }}.exe" "${{ env.ARTIFACTS_PATH }}/"
 
       - name: Codesign with Azure Trusted Signing
-        if: ${{ runner.os == 'Windows' }}
+        if: false && ${{ runner.os == 'Windows' }} # Disabled for now
         uses: azure/artifact-signing-action@v2
         with:
           # The Azure Active Directory tenant (directory) ID.
