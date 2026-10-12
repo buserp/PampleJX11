@@ -24,6 +24,8 @@ class Synth
     float envDecay;
     float envSustain;
     float envRelease;
+    float oscMix;
+    float detune;
 
     void allocateResources(double sampleRate, int samplesPerBlock);
     void deallocateResources();

@@ -20,8 +20,7 @@ constexpr float PI = M_PI;
 class Oscillator
 {
    public:
-    float freq = 0.0f;
-    float sampleRate = 0.0f;
+    float period;
     float amplitude = 1.0f;
 
     void reset()
@@ -40,7 +39,7 @@ class Oscillator
 
         if (phase <= PI_OVER_4)
         {
-            float halfPeriod = (sampleRate / freq) / 2.0f;
+            float halfPeriod = period / 2.0f;
             phaseMax = std::floor(0.5f + halfPeriod) - 0.5f;
             dc = 0.5f * amplitude / phaseMax;
             phaseMax *= PI;

@@ -17,23 +17,28 @@ struct Voice
 {
     int note;
     float saw;
-    Oscillator osc;
+    Oscillator osc1;
+    Oscillator osc2;
     Envelope env;
 
     void reset()
     {
         note = -1;
         saw = 0.0f;
-        osc.reset();
+        osc1.reset();
+        osc2.reset();
         env.reset();
     }
 
     float render(float input)
     {
-        float sample = osc.nextSample();
+        float sample1 = osc1.nextSample();
+        float sample2 = osc2.nextSample();
+        saw = saw * 0.997f + sample1 - sample2; // Leaky integrator
+
+        float output = saw + input;
         float envelope = env.nextValue();
-        saw = saw * 0.997f + sample; // Leaky integrator
-        return (saw + input) * envelope;
+        return output * envelope;
     }
 
     void release()

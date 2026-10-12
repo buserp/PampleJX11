@@ -11,6 +11,7 @@
 #include "Utils.h"
 
 constexpr float MAX_DECAY_SECS = 5.0f;
+constexpr float SEMITONE_RATIO = 1.0594630943592953f;
 
 //==============================================================================
 JX11AudioProcessor::JX11AudioProcessor()
@@ -238,6 +239,13 @@ void JX11AudioProcessor::update()
     float noiseMix = noiseParam->get() / 100.0f;
     noiseMix *= noiseMix;
     synth.noiseMix = noiseMix * 0.06f;
+
+    synth.oscMix = oscMixParam->get() / 100.0f;
+
+    float semis = oscTuneParam->get() / 100.0f;
+    float cents = oscFineParam->get() / 100.0f;
+
+    synth.detune = std::pow(SEMITONE_RATIO, -semis - 0.01f * cents);
 }
 
 void JX11AudioProcessor::splitBufferByEvents (juce::AudioBuffer<float>& buffer,
