@@ -15,12 +15,10 @@
 constexpr int NUM_PARAMS = 26;
 constexpr int MAX_NAME_LEN = 40;
 
-struct Preset {
-    Preset(const char *name, float p0, float p1, float p2, float p3, float p4,
-           float p5, float p6, float p7, float p8, float p9, float p10,
-           float p11, float p12, float p13, float p14, float p15, float p16,
-           float p17, float p18, float p19, float p20, float p21, float p22,
-           float p23, float p24, float p25) {
+struct Preset
+{
+    Preset(const char* name, float p0, float p1, float p2, float p3, float p4, float p5, float p6, float p7, float p8, float p9, float p10, float p11, float p12, float p13, float p14, float p15, float p16, float p17, float p18, float p19, float p20, float p21, float p22, float p23, float p24, float p25)
+    {
         strncpy(this->name, name, MAX_NAME_LEN);
         param[0] = p0;   // Osc Mix
         param[1] = p1;   // Osc Tune
