@@ -10,8 +10,13 @@
 
 #include "Preset.h"
 #include "Synth.h"
+#include "Utils.h"
 
 #include "juce_audio_processors/juce_audio_processors.h"
+
+constexpr float MAX_DECAY_SECS = 5.0f;
+constexpr float SEMITONE_RATIO = 1.059463094359f;
+constexpr float MIDI_0_TUNING = -36.37631885843165691960781145f;
 
 namespace ParameterID
 {

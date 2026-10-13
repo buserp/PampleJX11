@@ -7,11 +7,6 @@
 */
 
 #include "PluginProcessor.h"
-#include "PluginEditor.h"
-#include "Utils.h"
-
-constexpr float MAX_DECAY_SECS = 5.0f;
-constexpr float SEMITONE_RATIO = 1.0594630943592953f;
 
 //==============================================================================
 JX11AudioProcessor::JX11AudioProcessor()
@@ -242,10 +237,16 @@ void JX11AudioProcessor::update()
 
     synth.oscMix = oscMixParam->get() / 100.0f;
 
-    float semis = oscTuneParam->get() / 100.0f;
-    float cents = oscFineParam->get() / 100.0f;
+    float semis = oscTuneParam->get();
+    float cents = oscFineParam->get();
 
-    synth.detune = std::pow(SEMITONE_RATIO, -semis - 0.01f * cents);
+    synth.detune = std::pow (SEMITONE_RATIO, -semis - 0.01f * cents);
+
+    float octave = octaveParam->get();
+    float tuning = tuningParam->get();
+
+    float tuneInSemi = MIDI_0_TUNING - 12.0f * octave - tuning / 100.0f;
+    synth.tune = sampleRate * std::exp2 (EQUAL_TEMPERAMENT_RATIO * tuneInSemi);
 }
 
 void JX11AudioProcessor::splitBufferByEvents (juce::AudioBuffer<float>& buffer,

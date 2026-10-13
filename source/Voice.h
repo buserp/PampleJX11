@@ -17,6 +17,10 @@ struct Voice
 {
     int note;
     float saw;
+    float period;
+    float panLeft;
+    float panRight;
+
     Oscillator osc1;
     Oscillator osc2;
     Envelope env;
@@ -28,6 +32,8 @@ struct Voice
         osc1.reset();
         osc2.reset();
         env.reset();
+        panLeft = 0.707f;
+        panRight = 0.707f;
     }
 
     float render(float input)
@@ -44,5 +50,13 @@ struct Voice
     void release()
     {
         env.release();
+    }
+
+    void updatePanning()
+    {
+        float panning = std::clamp((note - 60.f) / 24.0f, -1.0f, 1.0f);
+        // Constant-power panning so that perceived loudness is the same
+        panLeft = std::sin(PI_OVER_4 * (1.0f - panning));
+        panRight = std::sin(PI_OVER_4 * (1.0f + panning));
     }
 };
