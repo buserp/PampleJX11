@@ -15,9 +15,9 @@ Synth::Synth()
     sampleRate = 44100.0f;
 }
 
-void Synth::allocateResources (double sampleRate_, int /*samplesPerBlock*/)
+void Synth::allocateResources(double sampleRate_, int /*samplesPerBlock*/)
 {
-    sampleRate = static_cast<float> (sampleRate_);
+    sampleRate = static_cast<float>(sampleRate_);
 }
 
 void Synth::deallocateResources()
@@ -33,9 +33,10 @@ void Synth::reset()
     }
     noiseGen.reset();
     pitchBend = 1.0f;
+    sustainPedalPressed = false;
 }
 
-void Synth::render (float** outputBuffers, int sampleCount)
+void Synth::render(float** outputBuffers, int sampleCount)
 {
     float* outputBufferLeft = outputBuffers[0];
     float* outputBufferRight = outputBuffers[1];
@@ -55,9 +56,9 @@ void Synth::render (float** outputBuffers, int sampleCount)
 
         for (Voice& voice : voices)
         {
-            if (voice.note > -1 && voice.env.isActive())
+            if (voice.env.isActive())
             {
-                float output = voice.render (noise);
+                float output = voice.render(noise);
                 outputLeft += output * voice.panLeft;
                 outputRight += output * voice.panRight;
             }
@@ -81,11 +82,23 @@ void Synth::render (float** outputBuffers, int sampleCount)
         }
     }
 
-    protectYourEars (outputBufferLeft, sampleCount);
-    protectYourEars (outputBufferRight, sampleCount);
+    protectYourEars(outputBufferLeft, sampleCount);
+    protectYourEars(outputBufferRight, sampleCount);
+}
+void Synth::controlChange(uint8_t data1, uint8_t data2)
+{
+    switch (data1)
+    {
+        // Sustain pedal
+        case 0x40:
+        {
+            sustainPedalPressed = (data2 >= 64);
+            break;
+        }
+    }
 }
 
-void Synth::midiMessage (uint8_t data0, uint8_t data1, uint8_t data2)
+void Synth::midiMessage(uint8_t data0, uint8_t data1, uint8_t data2)
 {
     // uint8_t channel = data0 & 0x0F;
     switch (data0 & 0xF0)
@@ -93,7 +106,7 @@ void Synth::midiMessage (uint8_t data0, uint8_t data1, uint8_t data2)
         // Note off
         case 0x80:
         {
-            noteOff (data1 & 0x7F);
+            noteOff(data1 & 0x7F);
             break;
         }
         // Note on
@@ -103,18 +116,24 @@ void Synth::midiMessage (uint8_t data0, uint8_t data1, uint8_t data2)
             uint8_t velo = data2 & 0x7F;
             if (velo > 0)
             {
-                noteOn (note, velo);
+                noteOn(note, velo);
             }
             else
             {
-                noteOff (note);
+                noteOff(note);
             }
             break;
         }
         // Pitch bend
         case 0xE0:
         {
-            pitchBend = std::exp (-0.000014102f * float (data1 + 128 * data2 - 8192));
+            pitchBend = std::exp(-0.000014102f * float(data1 + 128 * data2 - 8192));
+            break;
+        }
+        // Control change (CC)
+        case 0XB0:
+        {
+            controlChange(data1, data2);
             break;
         }
     }
@@ -122,12 +141,17 @@ void Synth::midiMessage (uint8_t data0, uint8_t data1, uint8_t data2)
 
 void Synth::noteOn(int note, int velocity)
 {
-    startVoice(0, note, velocity);
+    int voiceIndex = 0;
+    if (numVoices > 1)
+    {
+        voiceIndex = findFreeVoice();
+    }
+    startVoice(voiceIndex, note, velocity);
 }
 
-void Synth::startVoice (int v, int note, int velocity)
+void Synth::startVoice(int v, int note, int velocity)
 {
-    float period = calcPeriod (note);
+    float period = calcPeriod(v, note);
     Voice& voice = voices[v];
 
     voice.note = note;
@@ -150,21 +174,39 @@ void Synth::startVoice (int v, int note, int velocity)
     env.attack();
 }
 
-void Synth::noteOff (int note)
+void Synth::noteOff(int note)
 {
-    Voice& voice = voices[0];
-    if (voice.note == note)
+    for (Voice& voice : voices)
     {
-        voice.release();
+        if (voice.note == note)
+        {
+            voice.release();
+            voice.note = -1;
+        }
     }
 }
 
-float Synth::calcPeriod (int note) const
+float Synth::calcPeriod(int v, int note) const
 {
-    float period = tune * std::exp2 (-EQUAL_TEMPERAMENT_RATIO * float (note));
+    float period = tune * std::exp2(-EQUAL_TEMPERAMENT_RATIO * (float(note) + ANALOG_DRIFT * float(v)));
     while (period < MIN_PERIOD_IN_SAMPLES || (period * detune) < MIN_PERIOD_IN_SAMPLES)
     {
         period += period;
     }
     return period;
+}
+int Synth::findFreeVoice() const
+{
+    int v = 0;
+    float l = 100.0f; // initially louder than any envelope
+    for (int i = 0; i < MAX_VOICES; i++)
+    {
+        const auto& voice = voices[i];
+        if (voice.env.level < l && !voice.env.isInAttack())
+        {
+            l = voice.env.level;
+            v = i;
+        }
+    }
+    return v;
 }

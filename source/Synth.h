@@ -16,6 +16,7 @@
 
 constexpr float EQUAL_TEMPERAMENT_RATIO = 1.0f / 12.0f;
 constexpr float MIN_PERIOD_IN_SAMPLES = 6.0f;
+constexpr float ANALOG_DRIFT = 0.002f;
 
 class Synth
 {
@@ -34,16 +35,19 @@ class Synth
     float detune;
     float tune;
     float pitchBend;
+    bool sustainPedalPressed;
 
     void allocateResources(double sampleRate, int samplesPerBlock);
     void deallocateResources();
     void reset();
     void render(float** outputBuffers, int sampleCount);
+    void controlChange(uint8_t data1, uint8_t data2);
     void midiMessage(uint8_t data0, uint8_t data1, uint8_t data2);
     void noteOn(int note, int velocity);
     void startVoice(int v, int note, int velocity);
     void noteOff(int note);
-    float calcPeriod(int note) const;
+    float calcPeriod(int v, int note) const;
+    int findFreeVoice() const;
 
    private:
     float sampleRate;
