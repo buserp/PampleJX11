@@ -217,6 +217,9 @@ void JX11AudioProcessor::update()
     float sampleRate = static_cast<float> (getSampleRate());
     float inverseSampleRate = 1.0f / sampleRate;
 
+    // Index 0 = Mono; 1 = Poly
+    synth.numVoices = (polyModeParam->getIndex() == 0) ? 1 : Synth::MAX_VOICES;
+
     synth.envAttack = std::exp (-inverseSampleRate * std::exp (5.5f - 0.075f * envAttackParam->get()));
     synth.envDecay = std::exp (-inverseSampleRate * std::exp (5.5f - 0.075f * envDecayParam->get()));
     synth.envSustain = envSustainParam->get() / 100.0f;

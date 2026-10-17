@@ -22,6 +22,9 @@ class Synth
    public:
     Synth();
 
+    static constexpr int MAX_VOICES = 8;
+
+    int numVoices;
     float noiseMix;
     float envAttack;
     float envDecay;
@@ -38,11 +41,12 @@ class Synth
     void render(float** outputBuffers, int sampleCount);
     void midiMessage(uint8_t data0, uint8_t data1, uint8_t data2);
     void noteOn(int note, int velocity);
+    void startVoice(int v, int note, int velocity);
     void noteOff(int note);
     float calcPeriod(int note) const;
 
    private:
     float sampleRate;
-    Voice voice;
+    std::array<Voice, MAX_VOICES> voices;
     NoiseGenerator noiseGen;
 };

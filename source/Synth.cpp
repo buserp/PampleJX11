@@ -27,7 +27,10 @@ void Synth::deallocateResources()
 
 void Synth::reset()
 {
-    voice.reset();
+    for (Voice& v : voices)
+    {
+        v.reset();
+    }
     noiseGen.reset();
     pitchBend = 1.0f;
 }
@@ -37,8 +40,11 @@ void Synth::render (float** outputBuffers, int sampleCount)
     float* outputBufferLeft = outputBuffers[0];
     float* outputBufferRight = outputBuffers[1];
 
-    voice.osc1.period = voice.period * pitchBend;
-    voice.osc2.period = voice.osc1.period * detune;
+    for (Voice& voice : voices)
+    {
+        voice.osc1.period = voice.period * pitchBend;
+        voice.osc2.period = voice.osc1.period * detune;
+    }
 
     for (int sample = 0; sample < sampleCount; ++sample)
     {
@@ -47,11 +53,14 @@ void Synth::render (float** outputBuffers, int sampleCount)
         float outputLeft = 0.0f;
         float outputRight = 0.0f;
 
-        if (voice.note > -1 && voice.env.isActive())
+        for (Voice& voice : voices)
         {
-            float output = voice.render (noise);
-            outputLeft += output * voice.panLeft;
-            outputRight += output * voice.panRight;
+            if (voice.note > -1 && voice.env.isActive())
+            {
+                float output = voice.render (noise);
+                outputLeft += output * voice.panLeft;
+                outputRight += output * voice.panRight;
+            }
         }
         if (outputBufferRight != nullptr)
         {
@@ -64,9 +73,12 @@ void Synth::render (float** outputBuffers, int sampleCount)
         }
     }
 
-    if (!voice.env.isActive())
+    for (Voice& voice : voices)
     {
-        voice.env.reset();
+        if (!voice.env.isActive())
+        {
+            voice.env.reset();
+        }
     }
 
     protectYourEars (outputBufferLeft, sampleCount);
@@ -108,12 +120,19 @@ void Synth::midiMessage (uint8_t data0, uint8_t data1, uint8_t data2)
     }
 }
 
-void Synth::noteOn (int note, int velocity)
+void Synth::noteOn(int note, int velocity)
 {
+    startVoice(0, note, velocity);
+}
+
+void Synth::startVoice (int v, int note, int velocity)
+{
+    float period = calcPeriod (note);
+    Voice& voice = voices[v];
+
     voice.note = note;
     voice.updatePanning();
 
-    float period = calcPeriod (note);
     voice.period = period;
 
     voice.osc1.amplitude = (velocity / 127.0f) * 0.5f;
@@ -133,6 +152,7 @@ void Synth::noteOn (int note, int velocity)
 
 void Synth::noteOff (int note)
 {
+    Voice& voice = voices[0];
     if (voice.note == note)
     {
         voice.release();
