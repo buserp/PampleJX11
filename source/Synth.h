@@ -26,6 +26,8 @@ class Synth
     static constexpr int MAX_VOICES = 8;
 
     int numVoices;
+    juce::LinearSmoothedValue<float> outputLevelSmoother;
+    float volumeTrim;
     float noiseMix;
     float envAttack;
     float envDecay;
@@ -48,6 +50,7 @@ class Synth
     void noteOff(int note);
     float calcPeriod(int v, int note) const;
     int findFreeVoice() const;
+    void restartMonoVoice(int note, int velocity);
 
    private:
     float sampleRate;

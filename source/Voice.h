@@ -13,6 +13,9 @@
 #include "Envelope.h"
 #include "Oscillator.h"
 
+constexpr int NOTE_OFF = 0;
+constexpr int SUSTAIN = -1;
+
 struct Voice
 {
     int note;
@@ -27,7 +30,7 @@ struct Voice
 
     void reset()
     {
-        note = -1;
+        note = NOTE_OFF;
         saw = 0.0f;
         osc1.reset();
         osc2.reset();

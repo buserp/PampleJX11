@@ -34,6 +34,7 @@ void Synth::reset()
     noiseGen.reset();
     pitchBend = 1.0f;
     sustainPedalPressed = false;
+    outputLevelSmoother.reset(sampleRate, 0.05);
 }
 
 void Synth::render(float** outputBuffers, int sampleCount)
@@ -63,6 +64,11 @@ void Synth::render(float** outputBuffers, int sampleCount)
                 outputRight += output * voice.panRight;
             }
         }
+
+        float outputLevel = outputLevelSmoother.getNextValue();
+        outputLeft *= outputLevel;
+        outputRight *= outputLevel;
+
         if (outputBufferRight != nullptr)
         {
             outputBufferLeft[sample] = outputLeft;
@@ -93,6 +99,23 @@ void Synth::controlChange(uint8_t data1, uint8_t data2)
         case 0x40:
         {
             sustainPedalPressed = (data2 >= 64);
+            if (!sustainPedalPressed)
+            {
+                noteOff(SUSTAIN);
+            }
+            break;
+        }
+        // All notes off
+        default:
+        {
+            if (data1 >= 0x78)
+            {
+                for (Voice& voice : voices)
+                {
+                    voice.reset();
+                }
+                sustainPedalPressed = false;
+            }
             break;
         }
     }
@@ -142,7 +165,15 @@ void Synth::midiMessage(uint8_t data0, uint8_t data1, uint8_t data2)
 void Synth::noteOn(int note, int velocity)
 {
     int voiceIndex = 0;
-    if (numVoices > 1)
+    if (numVoices == 1) // monophonic
+    {
+        if (voices[0].note > NOTE_OFF) // legato
+        {
+            restartMonoVoice(note, velocity);
+            return;
+        }
+    }
+    else
     {
         voiceIndex = findFreeVoice();
     }
@@ -159,7 +190,7 @@ void Synth::startVoice(int v, int note, int velocity)
 
     voice.period = period;
 
-    voice.osc1.amplitude = (velocity / 127.0f) * 0.5f;
+    voice.osc1.amplitude = volumeTrim * velocity;
     voice.osc2.amplitude = voice.osc1.amplitude * oscMix;
 
     voice.osc2.reset();
@@ -180,8 +211,15 @@ void Synth::noteOff(int note)
     {
         if (voice.note == note)
         {
-            voice.release();
-            voice.note = -1;
+            if (sustainPedalPressed)
+            {
+                voice.note = SUSTAIN;
+            }
+            else
+            {
+                voice.release();
+                voice.note = NOTE_OFF;
+            }
         }
     }
 }
@@ -209,4 +247,15 @@ int Synth::findFreeVoice() const
         }
     }
     return v;
+}
+void Synth::restartMonoVoice(int note, int velocity)
+{
+    float period = calcPeriod(0, note);
+
+    Voice& voice = voices[0];
+    voice.period = period;
+
+    voice.env.level += SILENCE + SILENCE;
+    voice.note = note;
+    voice.updatePanning();
 }

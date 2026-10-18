@@ -217,8 +217,13 @@ void JX11AudioProcessor::update()
     float sampleRate = static_cast<float>(getSampleRate());
     float inverseSampleRate = 1.0f / sampleRate;
 
+    synth.outputLevelSmoother.setTargetValue(
+        juce::Decibels::decibelsToGain((outputLevelParam->get())));
+
     // Index 0 = Mono; 1 = Poly
     synth.numVoices = (polyModeParam->getIndex() == 0) ? 1 : Synth::MAX_VOICES;
+
+    synth.volumeTrim = 0.0008f * (3.2f - synth.oscMix - 25.0f * synth.noiseMix) * 1.5f;
 
     synth.envAttack = std::exp(-inverseSampleRate * std::exp(5.5f - 0.075f * envAttackParam->get()));
     synth.envDecay = std::exp(-inverseSampleRate * std::exp(5.5f - 0.075f * envDecayParam->get()));
@@ -310,7 +315,12 @@ void JX11AudioProcessor::render(juce::AudioBuffer<float>& buffer,
     synth.render(outputBuffers, sampleCount);
 }
 
-void JX11AudioProcessor::reset() { synth.reset(); }
+void JX11AudioProcessor::reset()
+{
+    synth.reset();
+    synth.outputLevelSmoother.setCurrentAndTargetValue(
+        juce::Decibels::decibelsToGain(outputLevelParam->get()));
+}
 
 //==============================================================================
 bool JX11AudioProcessor::hasEditor() const
