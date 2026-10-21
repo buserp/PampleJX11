@@ -12,14 +12,14 @@
 JX11AudioProcessor::JX11AudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
     : AudioProcessor(
-          BusesProperties()
-    #if !JucePlugin_IsMidiEffect
+        BusesProperties()
+        #if !JucePlugin_IsMidiEffect
         #if !JucePlugin_IsSynth
               .withInput("Input", juce::AudioChannelSet::stereo(), true)
         #endif
-              .withOutput("Output", juce::AudioChannelSet::stereo(), true)
-    #endif
-      )
+        .withOutput("Output", juce::AudioChannelSet::stereo(), true)
+        #endif
+        )
 #endif
 {
     castParameter(apvts, ParameterID::oscMix, oscMixParam);
@@ -58,49 +58,43 @@ JX11AudioProcessor::JX11AudioProcessor()
 JX11AudioProcessor::~JX11AudioProcessor() { apvts.state.removeListener(this); }
 
 //==============================================================================
-const juce::String JX11AudioProcessor::getName() const
-{
+const juce::String JX11AudioProcessor::getName() const {
     return JucePlugin_Name;
 }
 
-bool JX11AudioProcessor::acceptsMidi() const
-{
-#if JucePlugin_WantsMidiInput
+bool JX11AudioProcessor::acceptsMidi() const {
+    #if JucePlugin_WantsMidiInput
     return true;
-#else
+    #else
     return false;
-#endif
+    #endif
 }
 
-bool JX11AudioProcessor::producesMidi() const
-{
-#if JucePlugin_ProducesMidiOutput
+bool JX11AudioProcessor::producesMidi() const {
+    #if JucePlugin_ProducesMidiOutput
     return true;
-#else
+    #else
     return false;
-#endif
+    #endif
 }
 
-bool JX11AudioProcessor::isMidiEffect() const
-{
-#if JucePlugin_IsMidiEffect
+bool JX11AudioProcessor::isMidiEffect() const {
+    #if JucePlugin_IsMidiEffect
     return true;
-#else
+    #else
     return false;
-#endif
+    #endif
 }
 
 double JX11AudioProcessor::getTailLengthSeconds() const { return 0.0; }
 
-int JX11AudioProcessor::getNumPrograms()
-{
+int JX11AudioProcessor::getNumPrograms() {
     return static_cast<int>(presets.size());
 }
 
 int JX11AudioProcessor::getCurrentProgram() { return currentProgram; }
 
-void JX11AudioProcessor::setCurrentProgram(int index)
-{
+void JX11AudioProcessor::setCurrentProgram(int index) {
     currentProgram = index;
 
     juce::RangedAudioParameter* params[NUM_PARAMS] = {
@@ -134,8 +128,7 @@ void JX11AudioProcessor::setCurrentProgram(int index)
 
     const Preset& preset = presets[index];
 
-    for (int i = 0; i < NUM_PARAMS; ++i)
-    {
+    for (int i = 0; i < NUM_PARAMS; ++i) {
         params[i]->setValueNotifyingHost(
             params[i]->convertTo0to1(preset.param[i]));
     }
@@ -143,20 +136,17 @@ void JX11AudioProcessor::setCurrentProgram(int index)
     reset();
 }
 
-const juce::String JX11AudioProcessor::getProgramName(int index)
-{
-    return juce::String { presets[index].name };
+const juce::String JX11AudioProcessor::getProgramName(int index) {
+    return juce::String{ presets[index].name };
 }
 
 void JX11AudioProcessor::changeProgramName(int index,
-    const juce::String& newName)
-{
+    const juce::String& newName) {
     // not implemented
 }
 
 //==============================================================================
-void JX11AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
-{
+void JX11AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     synth.allocateResources(sampleRate, samplesPerBlock);
     parametersChanged.store(true);
     reset();
@@ -166,8 +156,7 @@ void JX11AudioProcessor::releaseResources() { synth.deallocateResources(); }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
 bool JX11AudioProcessor::isBusesLayoutSupported(
-    const BusesLayout& layouts) const
-{
+    const BusesLayout& layouts) const {
     #if JucePlugin_IsMidiEffect
     juce::ignoreUnused(layouts);
     return true;
@@ -179,11 +168,11 @@ bool JX11AudioProcessor::isBusesLayoutSupported(
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono() && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
-        // This checks if the input layout matches the output layout
-        #if !JucePlugin_IsSynth
+    // This checks if the input layout matches the output layout
+    #if !JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
-        #endif
+    #endif
 
     return true;
     #endif
@@ -191,40 +180,33 @@ bool JX11AudioProcessor::isBusesLayoutSupported(
 #endif
 
 void JX11AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
-    juce::MidiBuffer& midiMessages)
-{
+    juce::MidiBuffer& midiMessages) {
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
     // Clear any output channels that don't contain input data.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-    {
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i) {
         buffer.clear(i, 0, buffer.getNumSamples());
     }
 
     bool expected = true;
-    if (isNonRealtime() || parametersChanged.compare_exchange_strong(expected, false))
-    {
+    if (isNonRealtime() || parametersChanged.compare_exchange_strong(expected, false)) {
         update();
     }
 
     splitBufferByEvents(buffer, midiMessages);
 }
 
-void JX11AudioProcessor::update()
-{
+void JX11AudioProcessor::update() {
     float sampleRate = static_cast<float>(getSampleRate());
     float inverseSampleRate = 1.0f / sampleRate;
 
     float filterVelocity = filterVelocityParam->get();
-    if (filterVelocity < -90.0f)
-    {
+    if (filterVelocity < -90.0f) {
         synth.velocitySensitivity = 0.0f;
         synth.ignoreVelocity = true;
-    }
-    else
-    {
+    } else {
         synth.velocitySensitivity = 0.0005f * filterVelocity;
         synth.ignoreVelocity = false;
     }
@@ -242,12 +224,9 @@ void JX11AudioProcessor::update()
     synth.envSustain = envSustainParam->get() / 100.0f;
 
     float envRelease = envReleaseParam->get();
-    if (envRelease < 1.0f)
-    {
+    if (envRelease < 1.0f) {
         synth.envRelease = 0.75f; // Fastest release possible
-    }
-    else
-    {
+    } else {
         synth.envRelease = std::exp(-inverseSampleRate * std::exp(5.5f - 0.075f * envRelease));
     }
 
@@ -270,22 +249,18 @@ void JX11AudioProcessor::update()
 }
 
 void JX11AudioProcessor::splitBufferByEvents(juce::AudioBuffer<float>& buffer,
-    juce::MidiBuffer& midiMessages)
-{
+    juce::MidiBuffer& midiMessages) {
     int bufferOffset = 0;
-    for (const auto metadata : midiMessages)
-    {
+    for (const auto metadata : midiMessages) {
         // Render the audio that happens before this event (if any)
         int samplesThisSegment = metadata.samplePosition - bufferOffset;
-        if (samplesThisSegment > 0)
-        {
+        if (samplesThisSegment > 0) {
             render(buffer, samplesThisSegment, bufferOffset);
             bufferOffset += samplesThisSegment;
         }
 
         // Handle the event. Ignore multibyte MIDI messages such as sysex.
-        if (metadata.numBytes <= 3)
-        {
+        if (metadata.numBytes <= 3) {
             uint8_t data1 = (metadata.numBytes >= 2) ? metadata.data[1] : 0;
             uint8_t data2 = (metadata.numBytes == 3) ? metadata.data[2] : 0;
             handleMIDI(metadata.data[0], data1, data2);
@@ -295,19 +270,16 @@ void JX11AudioProcessor::splitBufferByEvents(juce::AudioBuffer<float>& buffer,
     // Render the audio after the last MIDI event. If there were no
     // MIDI events at all, this renders the entire buffer.
     int samplesLastSegment = buffer.getNumSamples() - bufferOffset;
-    if (samplesLastSegment > 0)
-    {
+    if (samplesLastSegment > 0) {
         render(buffer, samplesLastSegment, bufferOffset);
     }
 
     midiMessages.clear();
 }
 
-void JX11AudioProcessor::handleMIDI(uint8_t data0, uint8_t data1, uint8_t data2)
-{
+void JX11AudioProcessor::handleMIDI(uint8_t data0, uint8_t data1, uint8_t data2) {
     // Program Change
-    if ((data0 & 0xF0) == 0xC0 && data1 < presets.size())
-    {
+    if ((data0 & 0xF0) == 0xC0 && data1 < presets.size()) {
         setCurrentProgram(data0);
     }
     synth.midiMessage(data0, data1, data2);
@@ -315,68 +287,70 @@ void JX11AudioProcessor::handleMIDI(uint8_t data0, uint8_t data1, uint8_t data2)
 
 void JX11AudioProcessor::render(juce::AudioBuffer<float>& buffer,
     int sampleCount,
-    int bufferOffset)
-{
+    int bufferOffset) {
     float* outputBuffers[2] = { nullptr, nullptr };
     outputBuffers[0] = buffer.getWritePointer(0) + bufferOffset;
-    if (getTotalNumOutputChannels() > 1)
-    {
+    if (getTotalNumOutputChannels() > 1) {
         outputBuffers[1] = buffer.getWritePointer(1) + bufferOffset;
     }
 
     synth.render(outputBuffers, sampleCount);
 }
 
-void JX11AudioProcessor::reset()
-{
+void JX11AudioProcessor::reset() {
     synth.reset();
     synth.outputLevelSmoother.setCurrentAndTargetValue(
         juce::Decibels::decibelsToGain(outputLevelParam->get()));
 }
 
 //==============================================================================
-bool JX11AudioProcessor::hasEditor() const
-{
+bool JX11AudioProcessor::hasEditor() const {
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor* JX11AudioProcessor::createEditor()
-{
+juce::AudioProcessorEditor* JX11AudioProcessor::createEditor() {
     auto editor = new juce::GenericAudioProcessorEditor(*this);
     editor->setSize(500, 500);
     return editor;
 }
 
 //==============================================================================
-void JX11AudioProcessor::getStateInformation(juce::MemoryBlock& destData)
-{
+void JX11AudioProcessor::getStateInformation(juce::MemoryBlock& destData) {
     copyXmlToBinary(*apvts.copyState().createXml(), destData);
 }
 
 void JX11AudioProcessor::setStateInformation(const void* data,
-    int sizeInBytes)
-{
+    int sizeInBytes) {
     std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
-    if (xml.get() != nullptr && xml->hasTagName(apvts.state.getType()))
-    {
+    if (xml.get() != nullptr && xml->hasTagName(apvts.state.getType())) {
         apvts.replaceState(juce::ValueTree::fromXml(*xml));
         parametersChanged.store(true);
     }
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout
-    JX11AudioProcessor::createParameterLayout()
-{
+    JX11AudioProcessor::createParameterLayout() {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
     layout.add(std::make_unique<juce::AudioParameterChoice>(
-        ParameterID::polyMode, "Polyphony", juce::StringArray { "Mono", "Poly" }, 1));
+        ParameterID::polyMode,
+        "Polyphony",
+        juce::StringArray{ "Mono", "Poly" },
+        1));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::oscTune, "Osc Tune", juce::NormalisableRange<float>(-24.0f, 24.0f, 1.0f), -12.0f, juce::AudioParameterFloatAttributes().withLabel("semi")));
+        ParameterID::oscTune,
+        "Osc Tune",
+        juce::NormalisableRange<float>(-24.0f, 24.0f, 1.0f),
+        -12.0f,
+        juce::AudioParameterFloatAttributes().withLabel("semi")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::oscFine, "Osc Fine", juce::NormalisableRange<float>(-50.0f, 50.0f, 0.1f, 0.3f, true), 0.0f, juce::AudioParameterFloatAttributes().withLabel("cent")));
+        ParameterID::oscFine,
+        "Osc Fine",
+        juce::NormalisableRange<float>(-50.0f, 50.0f, 0.1f, 0.3f, true),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("cent")));
 
     auto oscMixStringFromValue = [](float value, int) {
         char s[16] = { 0 };
@@ -385,28 +359,59 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     };
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::oscMix, "Osc Mix", juce::NormalisableRange<float>(0.0f, 100.0f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(oscMixStringFromValue)));
+        ParameterID::oscMix,
+        "Osc Mix",
+        juce::NormalisableRange<float>(0.0f, 100.0f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(oscMixStringFromValue)));
 
     layout.add(std::make_unique<juce::AudioParameterChoice>(
-        ParameterID::glideMode, "Glide Mode", juce::StringArray { "Off", "Legato", "Always" }, 0));
+        ParameterID::glideMode,
+        "Glide Mode",
+        juce::StringArray{ "Off", "Legato", "Always" },
+        0));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::glideRate, "Glide Rate", juce::NormalisableRange<float>(0.0f, 100.f, 1.0f), 35.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::glideRate,
+        "Glide Rate",
+        juce::NormalisableRange<float>(0.0f, 100.f, 1.0f),
+        35.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::glideBend, "Glide Bend", juce::NormalisableRange<float>(-36.0f, 36.0f, 0.01f, 0.4f, true), 0.0f, juce::AudioParameterFloatAttributes().withLabel("semi")));
+        ParameterID::glideBend,
+        "Glide Bend",
+        juce::NormalisableRange<float>(-36.0f, 36.0f, 0.01f, 0.4f, true),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("semi")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterFreq, "Filter Freq", juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 100.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::filterFreq,
+        "Filter Freq",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f),
+        100.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterReso, "Filter Reso", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 15.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::filterReso,
+        "Filter Reso",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        15.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterEnv, "Filter Env", juce::NormalisableRange<float>(-100.0f, 100.0f, 0.1f), 50.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::filterEnv,
+        "Filter Env",
+        juce::NormalisableRange<float>(-100.0f, 100.0f, 0.1f),
+        50.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterLFO, "Filter LFO", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::filterLFO,
+        "Filter LFO",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     auto filterVelocityStringFromValue = [](float value, int) {
         if (value < -90.0f)
@@ -416,31 +421,67 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     };
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterVelocity, "Velocity", juce::NormalisableRange<float>(-100.0f, 100.0f, 1.0f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(filterVelocityStringFromValue)));
+        ParameterID::filterVelocity,
+        "Velocity",
+        juce::NormalisableRange<float>(-100.0f, 100.0f, 1.0f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(filterVelocityStringFromValue)));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterAttack, "Filter Attack", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::filterAttack,
+        "Filter Attack",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterDecay, "Filter Decay", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 30.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::filterDecay,
+        "Filter Decay",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        30.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterSustain, "Filter Sustain", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::filterSustain,
+        "Filter Sustain",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::filterRelease, "Filter Release", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 25.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::filterRelease,
+        "Filter Release",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        25.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::envAttack, "Env Attack", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::envAttack,
+        "Env Attack",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::envDecay, "Env Decay", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 50.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::envDecay,
+        "Env Decay",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        50.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::envSustain, "Env Sustain", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 100.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::envSustain,
+        "Env Sustain",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        100.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::envRelease, "Env Release", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 30.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::envRelease,
+        "Env Release",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        30.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     auto lfoRateStringFromValue = [](float value, int) {
         float lfoHz = std::exp(7.0f * value - 4.0f);
@@ -448,7 +489,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     };
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::lfoRate, "LFO Rate", juce::NormalisableRange<float>(), 0.81f, juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction(lfoRateStringFromValue)));
+        ParameterID::lfoRate,
+        "LFO Rate",
+        juce::NormalisableRange<float>(),
+        0.81f,
+        juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction(lfoRateStringFromValue)));
 
     auto vibratoStringFromValue = [](float value, int) {
         if (value < 0.0f)
@@ -458,25 +503,43 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     };
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::vibrato, "Vibrato", juce::NormalisableRange<float>(-100.0f, 100.0f, 0.1f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(vibratoStringFromValue)));
+        ParameterID::vibrato,
+        "Vibrato",
+        juce::NormalisableRange<float>(-100.0f, 100.0f, 0.1f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(vibratoStringFromValue)));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::noise, "Noise", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("%")));
+        ParameterID::noise,
+        "Noise",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::octave, "Octave", juce::NormalisableRange<float>(-2.0f, 2.0f, 1.0f), 0.0f));
+        ParameterID::octave,
+        "Octave",
+        juce::NormalisableRange<float>(-2.0f, 2.0f, 1.0f),
+        0.0f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::tuning, "Tuning", juce::NormalisableRange<float>(-100.0f, 100.0f, 0.1f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("cent")));
+        ParameterID::tuning,
+        "Tuning",
+        juce::NormalisableRange<float>(-100.0f, 100.0f, 0.1f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("cent")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        ParameterID::outputLevel, "Output Level", juce::NormalisableRange<float>(-24.0f, 6.0f, 0.1f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("dB")));
+        ParameterID::outputLevel,
+        "Output Level",
+        juce::NormalisableRange<float>(-24.0f, 6.0f, 0.1f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("dB")));
 
     return layout;
 }
 
-void JX11AudioProcessor::createPrograms()
-{
+void JX11AudioProcessor::createPrograms() {
     presets.emplace_back("Init", 0.00f, -12.00f, 0.00f, 0.00f, 35.00f, 0.00f, 100.00f, 15.00f, 50.00f, 0.00f, 0.00f, 0.00f, 30.00f, 0.00f, 25.00f, 0.00f, 50.00f, 100.00f, 30.00f, 0.81f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 1.00f);
     presets.emplace_back("5th Sweep Pad", 100.00f, -7.00f, -6.30f, 1.00f, 32.00f, 0.00f, 90.00f, 60.00f, -76.00f, 0.00f, 0.00f, 90.00f, 89.00f, 90.00f, 73.00f, 0.00f, 50.00f, 100.00f, 71.00f, 0.81f, 30.00f, 0.00f, 0.00f, 0.00f, 0.00f, 1.00f);
     presets.emplace_back("Echo Pad [SA]", 88.00f, 0.00f, 0.00f, 0.00f, 49.00f, 0.00f, 46.00f, 76.00f, 38.00f, 10.00f, 38.00f, 100.00f, 86.00f, 76.00f, 57.00f, 30.00f, 80.00f, 68.00f, 66.00f, 0.79f, -74.00f, 25.00f, 0.00f, 0.00f, 0.00f, 1.00f);
@@ -525,7 +588,33 @@ void JX11AudioProcessor::createPrograms()
     presets.emplace_back("Thumb Piano", 72.00f, 15.00f, 50.00f, 0.00f, 35.00f, 0.00f, 37.00f, 47.00f, 8.00f, 0.00f, 0.00f, 0.00f, 45.00f, 0.00f, 39.00f, 0.00f, 39.00f, 0.00f, 48.00f, 0.81f, 20.00f, 0.00f, 1.00f, 0.00f, 0.00f, 1.00f);
     presets.emplace_back("Steel Drums [ZF]", 81.00f, 12.00f, -12.00f, 0.00f, 18.00f, 2.30f, 40.00f, 30.00f, 8.00f, 17.00f, -20.00f, 0.00f, 42.00f, 23.00f, 47.00f, 12.00f, 48.00f, 0.00f, 49.00f, 0.53f, -28.00f, 34.00f, 0.00f, 0.00f, 0.00f, 1.00f);
     presets.emplace_back(
-        "Car Horn", 57.00f, -1.00f, -2.80f, 0.00f, 35.00f, 0.00f, 46.00f, 0.00f, 36.00f, 0.00f, 0.00f, 46.00f, 30.00f, 100.00f, 23.00f, 30.00f, 50.00f, 100.00f, 31.00f, 1.00f, -24.00f, 0.00f, 0.00f, 0.00f, 0.00f, 1.00f);
+        "Car Horn",
+        57.00f,
+        -1.00f,
+        -2.80f,
+        0.00f,
+        35.00f,
+        0.00f,
+        46.00f,
+        0.00f,
+        36.00f,
+        0.00f,
+        0.00f,
+        46.00f,
+        30.00f,
+        100.00f,
+        23.00f,
+        30.00f,
+        50.00f,
+        100.00f,
+        31.00f,
+        1.00f,
+        -24.00f,
+        0.00f,
+        0.00f,
+        0.00f,
+        0.00f,
+        1.00f);
     presets.emplace_back("Helicopter", 0.00f, -12.00f, 0.00f, 0.00f, 35.00f, 0.00f, 8.00f, 36.00f, 38.00f, 100.00f, 0.00f, 100.00f, 100.00f, 0.00f, 100.00f, 96.00f, 50.00f, 100.00f, 92.00f, 0.97f, 0.00f, 100.00f, -2.00f, 0.00f, 0.00f, 1.00f);
     presets.emplace_back("Arctic Wind", 0.00f, -12.00f, 0.00f, 0.00f, 35.00f, 0.00f, 16.00f, 85.00f, 0.00f, 28.00f, 0.00f, 37.00f, 30.00f, 0.00f, 25.00f, 89.00f, 50.00f, 100.00f, 89.00f, 0.24f, 0.00f, 100.00f, 2.00f, 0.00f, 0.00f, 1.00f);
     presets.emplace_back("Thip", 100.00f, -7.00f, 0.00f, 0.00f, 35.00f, 0.00f, 0.00f, 100.00f, 94.00f, 0.00f, 0.00f, 2.00f, 20.00f, 0.00f, 20.00f, 0.00f, 46.00f, 0.00f, 30.00f, 0.81f, 0.00f, 78.00f, 0.00f, 0.00f, 0.00f, 1.00f);
@@ -535,7 +624,6 @@ void JX11AudioProcessor::createPrograms()
 
 //==============================================================================
 // This creates new instances of the plugin..
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
-{
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
     return new JX11AudioProcessor();
 }

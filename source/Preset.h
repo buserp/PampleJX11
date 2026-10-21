@@ -15,21 +15,19 @@
 constexpr int NUM_PARAMS = 26;
 constexpr int MAX_NAME_LEN = 40;
 
-struct Preset
-{
-    Preset(const char* name, float p0, float p1, float p2, float p3, float p4, float p5, float p6, float p7, float p8, float p9, float p10, float p11, float p12, float p13, float p14, float p15, float p16, float p17, float p18, float p19, float p20, float p21, float p22, float p23, float p24, float p25)
-    {
+struct Preset {
+    Preset(const char* name, float p0, float p1, float p2, float p3, float p4, float p5, float p6, float p7, float p8, float p9, float p10, float p11, float p12, float p13, float p14, float p15, float p16, float p17, float p18, float p19, float p20, float p21, float p22, float p23, float p24, float p25) {
         strncpy(this->name, name, MAX_NAME_LEN);
-        param[0] = p0;   // Osc Mix
-        param[1] = p1;   // Osc Tune
-        param[2] = p2;   // Osc Fine
-        param[3] = p3;   // Glide Mode
-        param[4] = p4;   // Glide Rate
-        param[5] = p5;   // Glide Bend
-        param[6] = p6;   // Filter Freq
-        param[7] = p7;   // Filter Reso
-        param[8] = p8;   // Filter Env
-        param[9] = p9;   // Filter LFO
+        param[0] = p0; // Osc Mix
+        param[1] = p1; // Osc Tune
+        param[2] = p2; // Osc Fine
+        param[3] = p3; // Glide Mode
+        param[4] = p4; // Glide Rate
+        param[5] = p5; // Glide Bend
+        param[6] = p6; // Filter Freq
+        param[7] = p7; // Filter Reso
+        param[8] = p8; // Filter Env
+        param[9] = p9; // Filter LFO
         param[10] = p10; // Velocity
         param[11] = p11; // Filter Attack
         param[12] = p12; // Filter Decay

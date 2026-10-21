@@ -10,25 +10,20 @@
 
 #include "Synth.h"
 
-Synth::Synth()
-{
+Synth::Synth() {
     sampleRate = 44100.0f;
 }
 
-void Synth::allocateResources(double sampleRate_, int /*samplesPerBlock*/)
-{
+void Synth::allocateResources(double sampleRate_, int /*samplesPerBlock*/) {
     sampleRate = static_cast<float>(sampleRate_);
 }
 
-void Synth::deallocateResources()
-{
+void Synth::deallocateResources() {
     // Do nothing yet
 }
 
-void Synth::reset()
-{
-    for (Voice& v : voices)
-    {
+void Synth::reset() {
+    for (Voice& v : voices) {
         v.reset();
     }
     noiseGen.reset();
@@ -37,28 +32,23 @@ void Synth::reset()
     outputLevelSmoother.reset(sampleRate, 0.05);
 }
 
-void Synth::render(float** outputBuffers, int sampleCount)
-{
+void Synth::render(float** outputBuffers, int sampleCount) {
     float* outputBufferLeft = outputBuffers[0];
     float* outputBufferRight = outputBuffers[1];
 
-    for (Voice& voice : voices)
-    {
+    for (Voice& voice : voices) {
         voice.osc1.period = voice.period * pitchBend;
         voice.osc2.period = voice.osc1.period * detune;
     }
 
-    for (int sample = 0; sample < sampleCount; ++sample)
-    {
+    for (int sample = 0; sample < sampleCount; ++sample) {
         float noise = noiseGen.nextValue() * noiseMix;
 
         float outputLeft = 0.0f;
         float outputRight = 0.0f;
 
-        for (Voice& voice : voices)
-        {
-            if (voice.env.isActive())
-            {
+        for (Voice& voice : voices) {
+            if (voice.env.isActive()) {
                 float output = voice.render(noise);
                 outputLeft += output * voice.panLeft;
                 outputRight += output * voice.panRight;
@@ -69,21 +59,16 @@ void Synth::render(float** outputBuffers, int sampleCount)
         outputLeft *= outputLevel;
         outputRight *= outputLevel;
 
-        if (outputBufferRight != nullptr)
-        {
+        if (outputBufferRight != nullptr) {
             outputBufferLeft[sample] = outputLeft;
             outputBufferRight[sample] = outputRight;
-        }
-        else
-        {
+        } else {
             outputBufferLeft[sample] = (outputLeft + outputRight) * 0.5f;
         }
     }
 
-    for (Voice& voice : voices)
-    {
-        if (!voice.env.isActive())
-        {
+    for (Voice& voice : voices) {
+        if (!voice.env.isActive()) {
             voice.env.reset();
         }
     }
@@ -92,27 +77,20 @@ void Synth::render(float** outputBuffers, int sampleCount)
     protectYourEars(outputBufferRight, sampleCount);
 }
 
-void Synth::controlChange(uint8_t data1, uint8_t data2)
-{
-    switch (data1)
-    {
+void Synth::controlChange(uint8_t data1, uint8_t data2) {
+    switch (data1) {
         // Sustain pedal
-        case 0x40:
-        {
+        case 0x40: {
             sustainPedalPressed = (data2 >= 64);
-            if (!sustainPedalPressed)
-            {
+            if (!sustainPedalPressed) {
                 noteOff(SUSTAIN);
             }
             break;
         }
         // All notes off
-        default:
-        {
-            if (data1 >= 0x78)
-            {
-                for (Voice& voice : voices)
-                {
+        default: {
+            if (data1 >= 0x78) {
+                for (Voice& voice : voices) {
                     voice.reset();
                 }
                 sustainPedalPressed = false;
@@ -122,51 +100,40 @@ void Synth::controlChange(uint8_t data1, uint8_t data2)
     }
 }
 
-void Synth::midiMessage(uint8_t data0, uint8_t data1, uint8_t data2)
-{
+void Synth::midiMessage(uint8_t data0, uint8_t data1, uint8_t data2) {
     // uint8_t channel = data0 & 0x0F;
-    switch (data0 & 0xF0)
-    {
+    switch (data0 & 0xF0) {
         // Note off
-        case 0x80:
-        {
+        case 0x80: {
             noteOff(data1 & 0x7F);
             break;
         }
         // Note on
-        case 0x90:
-        {
+        case 0x90: {
             uint8_t note = data1 & 0x7F;
             uint8_t velo = data2 & 0x7F;
-            if (velo > 0)
-            {
+            if (velo > 0) {
                 noteOn(note, velo);
-            }
-            else
-            {
+            } else {
                 noteOff(note);
             }
             break;
         }
         // Pitch bend
-        case 0xE0:
-        {
+        case 0xE0: {
             pitchBend = std::exp(-0.000014102f * float(data1 + 128 * data2 - 8192));
             break;
         }
         // Control change (CC)
-        case 0XB0:
-        {
+        case 0XB0: {
             controlChange(data1, data2);
             break;
         }
     }
 }
 
-void Synth::noteOn(int note, int velocity)
-{
-    if (ignoreVelocity)
-    {
+void Synth::noteOn(int note, int velocity) {
+    if (ignoreVelocity) {
         velocity = 80;
     }
     int voiceIndex = 0;
@@ -178,16 +145,13 @@ void Synth::noteOn(int note, int velocity)
             restartMonoVoice(note, velocity);
             return;
         }
-    }
-    else
-    {
+    } else {
         voiceIndex = findFreeVoice();
     }
     startVoice(voiceIndex, note, velocity);
 }
 
-void Synth::startVoice(int v, int note, int velocity)
-{
+void Synth::startVoice(int v, int note, int velocity) {
     float period = calcPeriod(v, note);
     Voice& voice = voices[v];
 
@@ -214,26 +178,18 @@ void Synth::startVoice(int v, int note, int velocity)
     env.attack();
 }
 
-void Synth::noteOff(int note)
-{
-    if ((numVoices == 1) && voices[0].note == note)
-    {
+void Synth::noteOff(int note) {
+    if ((numVoices == 1) && voices[0].note == note) {
         int queuedNote = nextQueuedNote();
-        if (queuedNote > NOTE_OFF)
-        {
+        if (queuedNote > NOTE_OFF) {
             restartMonoVoice(queuedNote, -1);
         }
     }
-    for (Voice& voice : voices)
-    {
-        if (voice.note == note)
-        {
-            if (sustainPedalPressed)
-            {
+    for (Voice& voice : voices) {
+        if (voice.note == note) {
+            if (sustainPedalPressed) {
                 voice.note = SUSTAIN;
-            }
-            else
-            {
+            } else {
                 voice.release();
                 voice.note = NOTE_OFF;
             }
@@ -241,25 +197,20 @@ void Synth::noteOff(int note)
     }
 }
 
-float Synth::calcPeriod(int v, int note) const
-{
+float Synth::calcPeriod(int v, int note) const {
     float period = tune * std::exp2(-EQUAL_TEMPERAMENT_RATIO * (float(note) + ANALOG_DRIFT * float(v)));
-    while (period < MIN_PERIOD_IN_SAMPLES || (period * detune) < MIN_PERIOD_IN_SAMPLES)
-    {
+    while (period < MIN_PERIOD_IN_SAMPLES || (period * detune) < MIN_PERIOD_IN_SAMPLES) {
         period += period;
     }
     return period;
 }
 
-int Synth::findFreeVoice() const
-{
+int Synth::findFreeVoice() const {
     int v = 0;
     float l = 100.0f; // initially louder than any envelope
-    for (int i = 0; i < MAX_VOICES; i++)
-    {
+    for (int i = 0; i < MAX_VOICES; i++) {
         const auto& voice = voices[i];
-        if (voice.env.level < l && !voice.env.isInAttack())
-        {
+        if (voice.env.level < l && !voice.env.isInAttack()) {
             l = voice.env.level;
             v = i;
         }
@@ -267,8 +218,7 @@ int Synth::findFreeVoice() const
     return v;
 }
 
-void Synth::restartMonoVoice(int note, int velocity)
-{
+void Synth::restartMonoVoice(int note, int velocity) {
     float period = calcPeriod(0, note);
 
     Voice& voice = voices[0];
@@ -279,27 +229,21 @@ void Synth::restartMonoVoice(int note, int velocity)
     voice.updatePanning();
 }
 
-void Synth::shiftQueuedNotes()
-{
-    for (int tmp = MAX_VOICES - 1; tmp > 0; tmp--)
-    {
+void Synth::shiftQueuedNotes() {
+    for (int tmp = MAX_VOICES - 1; tmp > 0; tmp--) {
         voices[tmp].note = voices[tmp - 1].note;
         voices[tmp].release();
     }
 }
 
-int Synth::nextQueuedNote()
-{
+int Synth::nextQueuedNote() {
     int held = 0;
-    for (int v = MAX_VOICES - 1; v > 0; v--)
-    {
-        if (voices[v].note > NOTE_OFF)
-        {
+    for (int v = MAX_VOICES - 1; v > 0; v--) {
+        if (voices[v].note > NOTE_OFF) {
             held = v;
         }
     }
-    if (held > 0)
-    {
+    if (held > 0) {
         int note = voices[held].note;
         voices[held].note = 0;
         return note;
