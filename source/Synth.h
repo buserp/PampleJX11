@@ -51,6 +51,8 @@ class Synth
     float calcPeriod(int v, int note) const;
     int findFreeVoice() const;
     void restartMonoVoice(int note, int velocity);
+    void shiftQueuedNotes();
+    int nextQueuedNote();
 
    private:
     float sampleRate;

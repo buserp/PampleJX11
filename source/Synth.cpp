@@ -169,6 +169,7 @@ void Synth::noteOn(int note, int velocity)
     {
         if (voices[0].note > NOTE_OFF) // legato
         {
+            shiftQueuedNotes();
             restartMonoVoice(note, velocity);
             return;
         }
@@ -207,6 +208,14 @@ void Synth::startVoice(int v, int note, int velocity)
 
 void Synth::noteOff(int note)
 {
+    if ((numVoices == 1) && voices[0].note == note)
+    {
+        int queuedNote = nextQueuedNote();
+        if (queuedNote > NOTE_OFF)
+        {
+            restartMonoVoice(queuedNote, -1);
+        }
+    }
     for (Voice& voice : voices)
     {
         if (voice.note == note)
@@ -258,4 +267,30 @@ void Synth::restartMonoVoice(int note, int velocity)
     voice.env.level += SILENCE + SILENCE;
     voice.note = note;
     voice.updatePanning();
+}
+void Synth::shiftQueuedNotes()
+{
+    for (int tmp = MAX_VOICES - 1; tmp > 0; tmp--)
+    {
+        voices[tmp].note = voices[tmp - 1].note;
+        voices[tmp].release();
+    }
+}
+int Synth::nextQueuedNote()
+{
+    int held = 0;
+    for (int v = MAX_VOICES - 1; v > 0; v--)
+    {
+        if (voices[v].note > NOTE_OFF)
+        {
+            held = v;
+        }
+    }
+    if (held > 0)
+    {
+        int note = voices[held].note;
+        voices[held].note = 0;
+        return note;
+    }
+    return 0;
 }
