@@ -217,6 +217,18 @@ void JX11AudioProcessor::update()
     float sampleRate = static_cast<float>(getSampleRate());
     float inverseSampleRate = 1.0f / sampleRate;
 
+    float filterVelocity = filterVelocityParam->get();
+    if (filterVelocity < -90.0f)
+    {
+        synth.velocitySensitivity = 0.0f;
+        synth.ignoreVelocity = true;
+    }
+    else
+    {
+        synth.velocitySensitivity = 0.0005f * filterVelocity;
+        synth.ignoreVelocity = false;
+    }
+
     synth.outputLevelSmoother.setTargetValue(
         juce::Decibels::decibelsToGain((outputLevelParam->get())));
 

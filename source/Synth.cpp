@@ -91,6 +91,7 @@ void Synth::render(float** outputBuffers, int sampleCount)
     protectYourEars(outputBufferLeft, sampleCount);
     protectYourEars(outputBufferRight, sampleCount);
 }
+
 void Synth::controlChange(uint8_t data1, uint8_t data2)
 {
     switch (data1)
@@ -164,6 +165,10 @@ void Synth::midiMessage(uint8_t data0, uint8_t data1, uint8_t data2)
 
 void Synth::noteOn(int note, int velocity)
 {
+    if (ignoreVelocity)
+    {
+        velocity = 80;
+    }
     int voiceIndex = 0;
     if (numVoices == 1) // monophonic
     {
@@ -191,7 +196,10 @@ void Synth::startVoice(int v, int note, int velocity)
 
     voice.period = period;
 
-    voice.osc1.amplitude = volumeTrim * velocity;
+    // Official velocity curve of the MIDI Association(tm)
+    // x^2 / 127
+    float velocityCurved = static_cast<float>(velocity * velocity) * VELOCITY_CURVE_CONSTANT;
+    voice.osc1.amplitude = volumeTrim * velocityCurved;
     voice.osc2.amplitude = voice.osc1.amplitude * oscMix;
 
     voice.osc2.reset();
@@ -242,6 +250,7 @@ float Synth::calcPeriod(int v, int note) const
     }
     return period;
 }
+
 int Synth::findFreeVoice() const
 {
     int v = 0;
@@ -257,6 +266,7 @@ int Synth::findFreeVoice() const
     }
     return v;
 }
+
 void Synth::restartMonoVoice(int note, int velocity)
 {
     float period = calcPeriod(0, note);
@@ -268,6 +278,7 @@ void Synth::restartMonoVoice(int note, int velocity)
     voice.note = note;
     voice.updatePanning();
 }
+
 void Synth::shiftQueuedNotes()
 {
     for (int tmp = MAX_VOICES - 1; tmp > 0; tmp--)
@@ -276,6 +287,7 @@ void Synth::shiftQueuedNotes()
         voices[tmp].release();
     }
 }
+
 int Synth::nextQueuedNote()
 {
     int held = 0;

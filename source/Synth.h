@@ -15,6 +15,7 @@
 #include "Voice.h"
 
 constexpr float EQUAL_TEMPERAMENT_RATIO = 1.0f / 12.0f;
+constexpr float VELOCITY_CURVE_CONSTANT = 1.0f / 127.0f;
 constexpr float MIN_PERIOD_IN_SAMPLES = 6.0f;
 constexpr float ANALOG_DRIFT = 0.002f;
 
@@ -38,6 +39,8 @@ class Synth
     float tune;
     float pitchBend;
     bool sustainPedalPressed;
+    float velocitySensitivity;
+    bool ignoreVelocity;
 
     void allocateResources(double sampleRate, int samplesPerBlock);
     void deallocateResources();
