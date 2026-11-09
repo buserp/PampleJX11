@@ -44,7 +44,7 @@ inline void protectYourEars(float *buffer, int sampleCount) {
             buffer[i] = 1.0f;
         }
         if (silence) {
-            memset(buffer, 0, sampleCount * sizeof(float));
+            memset(buffer, 0, size_t(sampleCount) * sizeof(float));
             return;
         }
     }

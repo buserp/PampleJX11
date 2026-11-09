@@ -126,7 +126,7 @@ void JX11AudioProcessor::setCurrentProgram(int index) {
         polyModeParam,
     };
 
-    const Preset& preset = presets[index];
+    const Preset& preset = presets[size_t(index)];
 
     for (int i = 0; i < NUM_PARAMS; ++i) {
         params[i]->setValueNotifyingHost(
@@ -137,11 +137,11 @@ void JX11AudioProcessor::setCurrentProgram(int index) {
 }
 
 const juce::String JX11AudioProcessor::getProgramName(int index) {
-    return juce::String{ presets[index].name };
+    return juce::String{ presets[size_t(index)].name };
 }
 
-void JX11AudioProcessor::changeProgramName(int index,
-    const juce::String& newName) {
+void JX11AudioProcessor::changeProgramName(int /*index*/,
+    const juce::String& /*newName*/) {
     // not implemented
 }
 

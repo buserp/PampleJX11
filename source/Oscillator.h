@@ -10,12 +10,12 @@
 
 #pragma once
 
-#define _USE_MATH_DEFINES // for C++ math on Windows
 #include <cmath>
+#include <numbers>
 
-constexpr float TWO_PI = M_PI * 2;
-constexpr float PI_OVER_4 = M_PI / 4;
-constexpr float PI = M_PI;
+constexpr float PI = std::numbers::pi_v<float>;
+constexpr float TWO_PI = PI * 2;
+constexpr float PI_OVER_4 = PI / 4;
 
 class Oscillator {
 public:

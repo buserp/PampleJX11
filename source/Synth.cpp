@@ -153,7 +153,7 @@ void Synth::noteOn(int note, int velocity) {
 
 void Synth::startVoice(int v, int note, int velocity) {
     float period = calcPeriod(v, note);
-    Voice& voice = voices[v];
+    Voice& voice = voices[size_t(v)];
 
     voice.note = note;
     voice.updatePanning();
@@ -209,7 +209,7 @@ int Synth::findFreeVoice() const {
     int v = 0;
     float l = 100.0f; // initially louder than any envelope
     for (int i = 0; i < MAX_VOICES; i++) {
-        const auto& voice = voices[i];
+        const auto& voice = voices[size_t(i)];
         if (voice.env.level < l && !voice.env.isInAttack()) {
             l = voice.env.level;
             v = i;
@@ -218,7 +218,7 @@ int Synth::findFreeVoice() const {
     return v;
 }
 
-void Synth::restartMonoVoice(int note, int velocity) {
+void Synth::restartMonoVoice(int note, int /*velocity*/) {
     float period = calcPeriod(0, note);
 
     Voice& voice = voices[0];
@@ -231,21 +231,21 @@ void Synth::restartMonoVoice(int note, int velocity) {
 
 void Synth::shiftQueuedNotes() {
     for (int tmp = MAX_VOICES - 1; tmp > 0; tmp--) {
-        voices[tmp].note = voices[tmp - 1].note;
-        voices[tmp].release();
+        voices[size_t(tmp)].note = voices[size_t(tmp - 1)].note;
+        voices[size_t(tmp)].release();
     }
 }
 
 int Synth::nextQueuedNote() {
     int held = 0;
     for (int v = MAX_VOICES - 1; v > 0; v--) {
-        if (voices[v].note > NOTE_OFF) {
+        if (voices[size_t(v)].note > NOTE_OFF) {
             held = v;
         }
     }
     if (held > 0) {
-        int note = voices[held].note;
-        voices[held].note = 0;
+        int note = voices[size_t(held)].note;
+        voices[size_t(held)].note = 0;
         return note;
     }
     return 0;

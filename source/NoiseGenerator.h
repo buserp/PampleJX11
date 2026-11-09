@@ -24,7 +24,7 @@ public:
         int temp = int(noiseSeed >> 7) - 16777216;
 
         // Convert to a floating-point number between -1.0 and 1.0.
-        return float(temp) / 16777216.0;
+        return float(temp) / 16777216.0f;
     }
 
 private:

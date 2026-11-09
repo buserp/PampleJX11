@@ -126,7 +126,7 @@ jobs:
       - name: Import Certificates (macOS)
         uses: sudara/basic-macos-keychain-action@v1
         id: keychain
-        if: ${{ runner.os == 'macOS'}}
+        if: false # Disabled for now
         with:
           dev-id-app-cert: ${{ secrets.DEV_ID_APP_CERT }}
           dev-id-app-password: ${{ secrets.DEV_ID_APP_PASSWORD }}

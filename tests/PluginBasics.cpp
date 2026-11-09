@@ -31,11 +31,8 @@ TEST_CASE ("Plugin instance", "[instance]")
 
 TEST_CASE ("IPP version", "[ipp]")
 {
-    #if defined(__APPLE__)
-        // macOS uses 2021.9.1 from pip wheel (only x86_64 version available)
-        CHECK_THAT (ippsGetLibVersion()->Version, Catch::Matchers::Equals ("2021.9.1 (r0x7e208212)"));
-    #else
-        CHECK_THAT (ippsGetLibVersion()->Version, Catch::Matchers::Equals ("2026.0.0 (r0xa7ad6ebc)"));
-    #endif
+    // Compare against the headers rather than a hardcoded version,
+    // since CI's apt install picks up each new IPP release on Linux
+    CHECK_THAT (ippsGetLibVersion()->Version, Catch::Matchers::StartsWith (IPP_VERSION_STR));
 }
 #endif
