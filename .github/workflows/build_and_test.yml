@@ -41,7 +41,7 @@ jobs:
             pluginval-binary: ./pluginval
             extra-flags: -G Ninja -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=lld
           - name: macOS
-            os: macos-14
+            os: macos-15
             pluginval-binary: pluginval.app/Contents/MacOS/pluginval
             extra-flags: -G Ninja -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
           - name: Windows
@@ -143,8 +143,18 @@ jobs:
           codesign --force --keychain ${{ steps.keychain.outputs.keychain-path }} -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v "${{ env.CLAP_PATH }}" --deep --strict --options=runtime --timestamp
           codesign --force --keychain ${{ steps.keychain.outputs.keychain-path }} -s "${{ secrets.DEVELOPER_ID_APPLICATION}}" -v "${{ env.STANDALONE_PATH }}" --deep --strict --options=runtime --timestamp
 
-      - name: Add Custom Icons (macOS)
+      - name: Ad-hoc Codesign (macOS)
         if: ${{ runner.os == 'macOS' }}
+        run: |
+          # Free alternative to a Developer ID: JUCE only signs the binaries, so sign the whole bundles
+          # Gatekeeper still blocks these on other Macs until the quarantine flag is cleared
+          for bundle in "${{ env.VST3_PATH }}" "${{ env.AU_PATH }}" "${{ env.CLAP_PATH }}" "${{ env.STANDALONE_PATH }}"; do
+            codesign --force --deep --sign - "$bundle"
+            codesign --verify --deep --strict "$bundle"
+          done
+
+      - name: Add Custom Icons (macOS)
+        if: false # Disabled for now, these break the signature and are still the template's icon
         run: |
           # add the icns as its own icon resource (meta!)
           sips -i packaging/pamplejuce.icns
@@ -186,6 +196,17 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         working-directory: ${{ env.ARTIFACTS_PATH }}
         run: 7z a -tzip "${{ env.ARTIFACT_NAME }}.zip" "-xr!lib${{ env.PRODUCT_NAME }}_SharedCode.a" .
+
+      - name: Zip (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        working-directory: ${{ env.ARTIFACTS_PATH }}
+        run: |
+          # ditto keeps the symlinks and metadata that bundles and their signatures rely on
+          mkdir "${{ env.ARTIFACT_NAME }}"
+          for format in AU CLAP Standalone VST3; do
+            ditto "$format" "${{ env.ARTIFACT_NAME }}/$format"
+          done
+          ditto -c -k --sequesterRsrc --keepParent "${{ env.ARTIFACT_NAME }}" "${{ env.ARTIFACT_NAME }}.zip"
 
       - name: Generate Installer
         if: ${{ runner.os == 'Windows' }}
@@ -233,8 +254,15 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}.zip
           path: "${{ env.ARTIFACTS_PATH }}/${{ env.ARTIFACT_NAME }}.zip"
 
-      - name: Upload pkg (macOS)
+      - name: Upload Zip (macOS)
         if: ${{ runner.os == 'macOS' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}.zip
+          path: "${{ env.ARTIFACTS_PATH }}/${{ env.ARTIFACT_NAME }}.zip"
+
+      - name: Upload pkg (macOS)
+        if: false # Disabled for now, needs the pkgbuild step above
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ARTIFACT_NAME }}.pkg
