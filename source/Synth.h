@@ -24,6 +24,8 @@ public:
     Synth();
 
     static constexpr int MAX_VOICES = 8;
+    static constexpr int LFO_MAX = 32;
+    float lfoInc;
 
     int numVoices;
     juce::LinearSmoothedValue<float> outputLevelSmoother;
@@ -40,6 +42,7 @@ public:
     bool sustainPedalPressed;
     float velocitySensitivity;
     bool ignoreVelocity;
+    float vibrato;
 
     void allocateResources(double sampleRate, int samplesPerBlock);
 
@@ -73,4 +76,8 @@ private:
     float sampleRate;
     std::array<Voice, MAX_VOICES> voices;
     NoiseGenerator noiseGen;
+
+    void updateLFO();
+    int lfoStep;
+    float lfo;
 };

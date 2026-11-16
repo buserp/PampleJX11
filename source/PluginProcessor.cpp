@@ -246,6 +246,14 @@ void JX11AudioProcessor::update() {
 
     float tuneInSemi = MIDI_0_TUNING - 12.0f * octave - tuning / 100.0f;
     synth.tune = sampleRate * std::exp2(EQUAL_TEMPERAMENT_RATIO * tuneInSemi);
+
+    const float inverseUpdateRate = inverseSampleRate * synth.LFO_MAX;
+    // Exponential curve that scales [0, 1] to [0, 20]
+    float lfoRate = std::exp(7.0f * lfoRateParam->get() - 4.0f);
+    synth.lfoInc = lfoRate * inverseUpdateRate * TWO_PI;
+
+    float vibrato = vibratoParam->get() / 200.0f;
+    synth.vibrato = 0.2f * vibrato * vibrato;
 }
 
 void JX11AudioProcessor::splitBufferByEvents(juce::AudioBuffer<float>& buffer,
